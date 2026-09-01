@@ -18,7 +18,32 @@ function navigate(path) {
   window.dispatchEvent(new PopStateEvent('popstate'));
   window.scrollTo(0, 0);
 } }
-function useRoute() { const [route,setRoute] = useState(window.location.pathname); useEffect(() => { const fn=()=>setRoute(window.location.pathname); window.addEventListener('popstate',fn); return ()=>window.removeEventListener('popstate',fn); },[]); return route; }
+function useRoute() {
+  const getRoute = () => {
+    const path = window.location.pathname;
+
+    if (path === '/TravelMate' || path === '/TravelMate/') {
+      return '/';
+    }
+
+    if (path.startsWith('/TravelMate/')) {
+      return path.slice('/TravelMate'.length);
+    }
+
+    return path;
+  };
+
+  const [route, setRoute] = useState(getRoute);
+
+  useEffect(() => {
+    const fn = () => setRoute(getRoute());
+    window.addEventListener('popstate', fn);
+
+    return () => window.removeEventListener('popstate', fn);
+  }, []);
+
+  return route;
+}
 function useReveal(route) { useEffect(() => { const items=[...document.querySelectorAll('main section, .page > *, .detail-content')]; items.forEach(item=>item.classList.add('reveal-item')); if(!('IntersectionObserver' in window)){items.forEach(item=>item.classList.add('is-visible'));return;} const observer=new IntersectionObserver((entries)=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target)}}),{threshold:.14,rootMargin:'0px 0px -28px'}); items.forEach((item,index)=>{item.style.setProperty('--reveal-delay',`${Math.min(index % 4,3)*70}ms`);observer.observe(item)}); return ()=>observer.disconnect(); },[route]); }
 function useTextMotion(route) { useEffect(() => { const headings=[...document.querySelectorAll('.route-shell h1, .route-shell h2, .route-shell h3')]; headings.forEach((heading)=>{if(heading.dataset.letterMotion)return; heading.dataset.letterMotion='true'; heading.classList.add('letter-fall'); heading.setAttribute('aria-label',heading.textContent.trim()); const walker=document.createTreeWalker(heading,NodeFilter.SHOW_TEXT); const nodes=[]; while(walker.nextNode())nodes.push(walker.currentNode); const characterCount=nodes.reduce((total,node)=>total+[...node.textContent].length,0); let index=0; nodes.forEach((node)=>{const fragment=document.createDocumentFragment(); [...node.textContent].forEach((character)=>{const letter=document.createElement('span'); letter.className='fall-letter'; letter.setAttribute('aria-hidden','true'); letter.style.setProperty('--letter-delay',`${Math.round(index++*1650/Math.max(characterCount-1,1))}ms`); letter.textContent=character===' '?'\u00a0':character; fragment.appendChild(letter)}); node.replaceWith(fragment)}); }); const paragraphs=[...document.querySelectorAll('.route-shell p')]; const reveal=(element)=>element.classList.add('copy-visible'); paragraphs.forEach((paragraph,index)=>{if(paragraph.dataset.copyMotion)return; paragraph.dataset.copyMotion='true'; paragraph.classList.add('copy-fade'); paragraph.style.setProperty('--copy-delay',`${Math.min(index%5,4)*85}ms`);}); if(!('IntersectionObserver' in window)){paragraphs.forEach(reveal);return;} const observer=new IntersectionObserver((entries)=>entries.forEach(entry=>{if(entry.isIntersecting){reveal(entry.target);observer.unobserve(entry.target)}}),{threshold:.1,rootMargin:'0px 0px -16px'}); paragraphs.forEach(paragraph=>observer.observe(paragraph)); return ()=>observer.disconnect(); },[route]); }
 function Image({src,alt,className=''}) { const [failed,setFailed]=useState(false); return failed ? <div className={`image-fallback ${className}`} aria-label={alt}>✦</div> : <img className={className} src={src} alt={alt} loading="lazy" onError={()=>setFailed(true)} />; }
